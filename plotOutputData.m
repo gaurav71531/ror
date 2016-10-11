@@ -9,12 +9,13 @@ colorVec = {[1 0 0], [0 1 0], [0 0 1], [1 1 0], [1 0 1], [0 1 1], [0.7 0.1 0.9],
 % currentDataNew1.mat is with Nebraska
 % currentDataNewTest.mat is with fft values
 
-matObj = matfile('currentDataNew1.mat');
+% matObj = matfile('currentDataNew1.mat');
+matObj = matfile('currentDataJun.mat');
 rivPt = matObj.rivPt;
 
 if nargin < 2
-    lambda = 0.001;
-    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_576.mat', lambda);
+    lambda = 0.01;
+    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_576_Jun.mat', lambda);
     matObj = matfile([pwd '/OutputData/' inpFileStr]);
     D = matObj.D;
     rorOccupiedSet = matObj.rorOccupiedSet;
@@ -151,6 +152,7 @@ xlabel('$x (\times 100\hspace{2pt}km)$', 'interpreter', 'latex', 'FontSize', 14)
 ylabel('$y (\times 100\hspace{2pt}km)$', 'interpreter', 'latex', 'FontSize', 14);
 titStr = sprintf('$\\vert\\mathcal{R}\\vert$ = %d, $\\vert\\mathcal{D}\\vert$ = %d, $\\lambda$ = %4.3f', length(rivPt), length(demPt), lambda);
 title(titStr, 'interpreter', 'latex', 'FontSize', 14);
+% set(gca, 'TickLength', [0,0]);
 box on;
 % grid;
 

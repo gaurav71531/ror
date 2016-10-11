@@ -23,39 +23,64 @@ end
 % to m^3) / 1000 (for kW)
 flowPowerFactor = 0.8 * 8 * 9.8 * 0.3038^3 / 1000;
 
+% % % % Time period for river Data %%%%%%%%%%%
+mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
+dStart = [11,0,0];
+dEnd = [11,0,0];
+folderStr = sprintf('/Data/sitePowerPdf%s/', mon{dStart(1)});
+% % % % % % % % % % % % % % % % % % % % % % % % % 
 % % % utility functions
 
-% extractAndSave();
-% processRiverPt();
-% processDemandPt();
+% arg: 0 -> extract and save
+% arg: 1 -> process riv and dem points
+% arg: 2 -> run ror placement algorithm
+arg = 0;
+
+switch arg
+    case 0
+        extractAndSave(dStart, dEnd);
+        
+    case 1
+        processRiverPt(folderStr);
+        processDemandPt();
+        
+    case 2
+        % currentData is original without std
+        % currentDataNew is with some modifications in pdf mean and std
+        % currentDataNew1.mat is with Nebraska
+        % currentDataNewTest.mat is with fft values
+
+        % matObj = matfile('currentDataNew1.mat');
+        matObj = matfile('currentDataJun.mat');
+        rivPt = matObj.rivPt;
+        demPt = matObj.demPt;
+        weakRivPtInd = matObj.weakRivPtInd;
+        weakRivPtIndNE = matObj.weakRivPtIndNE;
+        neInd = matObj.neInd;
+
+        % weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
+        % weakRivPtInd = [155,174:182];
+        % weakRivPtIndNE = [140,141];
+        % neInd = [140:153];%nebraska 
+
+        rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
+
+        % demPt = demPt(1:2:end);
+        progress();
+        partitionSpaceForRor(mon{dStart(1)});
+        
+            
+end
+       
 
 % plotOutputData();
 
-% currentData is original without std
-% currentDataNew is with some modifications in pdf mean and std
-% currentDataNew1.mat is with Nebraska
-% currentDataNewTest.mat is with fft values
-
-matObj = matfile('currentDataNew1.mat');
-rivPt = matObj.rivPt;
-demPt = matObj.demPt;
-
-% weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
-weakRivPtInd = [155,174:182];
-weakRivPtIndNE = [140,141];
-neInd = [140:153];%nebraska 
-
-rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
-
-demPt = demPt(1:2:end);
-
 % plotRiverCoord();
 
-progress();
-partitionSpaceForRor();
 
 
-function partitionSpaceForRor()
+
+function partitionSpaceForRor(mon)
 
 tic;
 timeBegin = toc;
@@ -81,7 +106,7 @@ fid = fopen('runLog_full.txt', 'w');
 
 for dInd = 1:numDemPt
 %     first allocation
-%     if dInd == 77
+%     if dInd == 107
 %         disp('gg');
 %     end
     distOfOccupied = zeros(rorAllocated,1);
@@ -164,6 +189,8 @@ for dInd = 1:numDemPt
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
                 if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
+%                     if length(clusterTotDemPdf(rorInd).nzStartInd) >1
+%                     end
                     [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
@@ -365,64 +392,64 @@ assignin('base', 'distCluster', distCluster);
 assignin('base', 'rivPt', rivPt);
 assignin('base', 'demPt', demPt);
 assignin('base', 'lambda', lambda);
-fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d.mat', lambda, length(demPt));
+fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%s.mat', lambda, length(demPt), mon);
 save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambda');
 plotOutputData(D, rorOccupiedSet, demPt, lambda);
 
 
-function [rorAvailableSet,rorOccupiedSet,distCluster,newSiteNum] = performGroupReshuffle(rorAllocated, D, numRiverPt, rorAvailableSet, rorOccupiedSet, clusterTotDemPdf, distTotal, distCluster, fid, type)
-
-% global demPt;
-global rivPt;
-
-newSiteNum = 999999; % dummy large value
-
-for rorInd = 1:rorAllocated
-    if length(D{rorInd}) == 1, continue;end
-    distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
-    for rorAvailableInd = 1:length(rorAvailableSet)
-        if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
-            [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
-        else
-            distRorAvailable(rorAvailableInd) = Inf;
-        end     
-    end
-%         distRorOccupied = zeros(rorAllocated, 1);
-%         for rorOccupiedInd = 1:rorAllocated
-%             if rorOccupiedSet(rorInd) == rorOccupiedSet(rorOccupiedInd),continue;end
-%             distRorOccupied(rorOccupiedInd) = getTotalDistance([D{rorInd},D{rorOccupiedInd}], rivPt(rorAvailableSet(rorAvailableInd)), 'ind');
+% function [rorAvailableSet,rorOccupiedSet,distCluster,newSiteNum] = performGroupReshuffle(rorAllocated, D, numRiverPt, rorAvailableSet, rorOccupiedSet, clusterTotDemPdf, distTotal, distCluster, fid, type)
+% 
+% % global demPt;
+% global rivPt;
+% 
+% newSiteNum = 999999; % dummy large value
+% 
+% for rorInd = 1:rorAllocated
+%     if length(D{rorInd}) == 1, continue;end
+%     distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
+%     for rorAvailableInd = 1:length(rorAvailableSet)
+%         if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
+%             [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
+%         else
+%             distRorAvailable(rorAvailableInd) = Inf;
+%         end     
+%     end
+% %         distRorOccupied = zeros(rorAllocated, 1);
+% %         for rorOccupiedInd = 1:rorAllocated
+% %             if rorOccupiedSet(rorInd) == rorOccupiedSet(rorOccupiedInd),continue;end
+% %             distRorOccupied(rorOccupiedInd) = getTotalDistance([D{rorInd},D{rorOccupiedInd}], rivPt(rorAvailableSet(rorAvailableInd)), 'ind');
+% %         end
+%     [dMinAvail, indMinAvail] = min(distRorAvailable);
+% %         [dMinOcc, indMinOcc] = min(distRorOccupied);
+%     distClusterOcc = ones(length(distCluster),1) * Inf;
+%     distClusterAvail = distCluster;
+% %         distClusterOcc(rorInd) = 0;
+% %         distClusterOcc(indMinAvail) = dMinOcc;
+% 
+%     distClusterAvail(rorInd) = dMinAvail;
+%     sumDistClusterAvail = sum(distClusterAvail);
+%     sumDistClusterOcc = sum(distClusterOcc);
+%     dMin = min(sumDistClusterAvail, sumDistClusterOcc);
+%     if dMin < distTotal
+%         if sumDistClusterAvail < sumDistClusterOcc
+%             indReturn = rorOccupiedSet(rorInd);
+%             if strcmp(type, 'run')
+%                 fprintf(fid, 'group with ror-%d moved to site-%d\n', indReturn, rorAvailableSet(indMinAvail));
+%             end
+%             newSiteNum = rorAvailableSet(indMinAvail);
+%             rorOccupiedSet(rorInd) = rorAvailableSet(indMinAvail);
+%             rorAvailableSet(indMinAvail) = indReturn;
+%             distCluster(rorInd) = distRorAvailable(indMinAvail);
+%         else
+% %                 not used right now
+%             fprintf('should not reach here\n');
+% %             rorAvailableSet = [rorAvailableSet, rorOccupiedSet(rorInd)];
+% %             rorOccupiedSet(rorInd) = [];
+% %             D{indMinOcc} = [D{indMinOcc}, D{rorInd}];
+% %             D{rorInd} = [];
 %         end
-    [dMinAvail, indMinAvail] = min(distRorAvailable);
-%         [dMinOcc, indMinOcc] = min(distRorOccupied);
-    distClusterOcc = ones(length(distCluster),1) * Inf;
-    distClusterAvail = distCluster;
-%         distClusterOcc(rorInd) = 0;
-%         distClusterOcc(indMinAvail) = dMinOcc;
-
-    distClusterAvail(rorInd) = dMinAvail;
-    sumDistClusterAvail = sum(distClusterAvail);
-    sumDistClusterOcc = sum(distClusterOcc);
-    dMin = min(sumDistClusterAvail, sumDistClusterOcc);
-    if dMin < distTotal
-        if sumDistClusterAvail < sumDistClusterOcc
-            indReturn = rorOccupiedSet(rorInd);
-            if strcmp(type, 'run')
-                fprintf(fid, 'group with ror-%d moved to site-%d\n', indReturn, rorAvailableSet(indMinAvail));
-            end
-            newSiteNum = rorAvailableSet(indMinAvail);
-            rorOccupiedSet(rorInd) = rorAvailableSet(indMinAvail);
-            rorAvailableSet(indMinAvail) = indReturn;
-            distCluster(rorInd) = distRorAvailable(indMinAvail);
-        else
-%                 not used right now
-            fprintf('should not reach here\n');
-%             rorAvailableSet = [rorAvailableSet, rorOccupiedSet(rorInd)];
-%             rorOccupiedSet(rorInd) = [];
-%             D{indMinOcc} = [D{indMinOcc}, D{rorInd}];
-%             D{rorInd} = [];
-        end
-    end
-end
+%     end
+% end
 
 
 function [val, demPdf] = getTotalDistance(demClusterInd, rivPt, type, pdfUse)
@@ -456,6 +483,8 @@ if strcmp(type, 'ind')
 elseif strcmp(type, 'pdf')
     demPdf = pdfUse;
 end
+if length(demPdf.nzStartInd) > 1
+end
 klDist = getKLDist(demPdf, rivPt.pdf);
 
 val = klDist + lambda* euclideanDist;
@@ -471,8 +500,11 @@ val = 0;
 
 for pLocalInd = 1:length(p.y)
     actualInd = p.nzStartInd + pLocalInd - 1;
+    try
     if actualInd >= q.nzStartInd && actualInd <= q.nzEndInd
         qLocalInd = actualInd - q.nzStartInd + 1;
+    end
+    catch
     end
     if actualInd < q.nzStartInd || actualInd > q.nzEndInd
         qValUse = epsilon;
@@ -518,6 +550,9 @@ y = conv(fcn1.y, fcn2.y);
 y = y * delXInPdf;
 [s, e] = getNZInterval(y);
 out.nzStartInd = numZerosBegin + s; 
+% length(out.nzStartInd)
+% if length(out.nzStartInd) > 1
+% end
 out.y = y(s:e);
 out.nzEndInd = out.nzStartInd + length(out.y) - 1;
 out.mean = fcn1.mean + fcn2.mean;
@@ -671,7 +706,7 @@ end
 % grid;
 
 
-function processRiverPt()
+function processRiverPt(folderStr)
 
 
 global rivPt;
@@ -679,7 +714,7 @@ global delXInPdf;
 % dataFile = {'latLon_Minnesota.mat', 'latLon_Iowa.mat', 'latLon_Illinois.mat', 'latLon_Missouri.mat', 'latLon_Wisconsin.mat'};
 % dataFile = {'latLon_Minnesota.mat'};
 % colorVec = {'b', 'r', ', 'm', 'c', 'k'};
-fileName = dir([pwd '/Data/sitePowerPdf']);
+fileName = dir([pwd folderStr]);
 
 % legendStr = cell(1,length(dataFile));
 X = zeros(length(fileName), 1);
@@ -691,7 +726,7 @@ for fileInd = 1:length(fileName)
     if length(fileName(fileInd).name) < 5, continue;end
     if ~strcmp(fileName(fileInd).name(end-2:end), 'mat'), continue;end
     
-    matObj = matfile([pwd '/Data/sitePowerPdf/', fileName(fileInd).name]);
+    matObj = matfile([pwd folderStr, fileName(fileInd).name]);
 %     pdfVal = matObj.f;
 %     flowVal = matobj.xi;
     latVal = matObj.latVal;
@@ -776,6 +811,8 @@ for i = 1:length(demPtTemp.x)
     yFcn = getGaussMixModFn([demPtTemp.mu1(i), demPtTemp.mu2(i)], [demPtTemp.sigSq1(i), demPtTemp.sigSq2(i)], demPtTemp.alpha(i));
     yUse = yFcn(pdfObj.x);
     [pdfObj.nzStartInd, pdfObj.nzEndInd] = getNZInterval(yUse);
+    if length(pdfObj.nzStartInd) > 1
+    end
     pdfObj.y = yUse(pdfObj.nzStartInd:pdfObj.nzEndInd);
     demPt(i).pdf = pdfObj;
     mean = sum(x .* yUse) * delXInPdf;
@@ -873,7 +910,7 @@ x = delXInPdf*(pdf1.nzStartInd-1)+[0:delXInPdf:delXInPdf*(length(pdf1.y)-1)];
 plot(x, pdf1.y);grid;
 
 
-function extractAndSave()
+function extractAndSave(dStart, dEnd)
 
 
 global delXInPdf;
@@ -881,8 +918,14 @@ global flowPowerFactor;
 % fileName = 'test39.csv';
 fileName = dir([pwd '/Data/siteFlow']);
 % fileName.name = 'flow_siteID_05287890.csv';
-dStart = [3,0,0];
-dEnd = [3,0,0];
+% dStart = [3,0,0];
+% dEnd = [3,0,0];
+% dStart = [6,0,0];
+% dEnd = [6,0,0];
+mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
+% % % % % 
+folderStr = sprintf('/Data/sitePowerPdf%s/', mon{dStart(1)});
+mkdir([pwd folderStr]);
 % % % % % % % % % % % % % % 
 % %first week of the year
 % dStart = [1,1,0];
@@ -890,20 +933,20 @@ dEnd = [3,0,0];
 %month of march
 
 % % % % % % % % % % % % % % 
-siteIDNE = {'06805600','06806500','06807000','06810070','06811500','06813500','06814500',',06815000','06466010','06466400','06466500','06467500','06478522','06478523','06478526','06486000','06600900','06601000','06601200','06609100','06610000','06610705','06610710', '06610720'};
+% siteIDNE = {'06805600','06806500','06807000','06810070','06811500','06813500','06814500',',06815000','06466010','06466400','06466500','06467500','06478522','06478523','06478526','06486000','06600900','06601000','06601200','06609100','06610000','06610705','06610710', '06610720'};
 
 for fileInd = 1:length(fileName)
     fileNameUse = fileName(fileInd).name;
     if length(fileNameUse) < 4, continue;end
     if ~strcmp(fileNameUse(1:4), 'flow'), continue;end
     siteID = fileNameUse(13:end-4);
-    count = 0;
-    for iGG = 1:length(siteIDNE)
-        if strcmp(siteID, siteIDNE{iGG})
-            count = count + 1;
-        end
-    end
-    if count < 1,continue;end
+%     count = 0;
+%     for iGG = 1:length(siteIDNE)
+%         if strcmp(siteID, siteIDNE{iGG})
+%             count = count + 1;
+%         end
+%     end
+%     if count < 1,continue;end
     fprintf('data read begin for siteID=%s ... ', siteID); 
     fid = fopen([pwd, '/Data/siteFlow/', fileName(fileInd).name]);
     dataRead = textscan(fid, '%s %s %*s %s', 'CommentStyle', '#'); % skipping third column, time zone
@@ -952,7 +995,7 @@ for fileInd = 1:length(fileName)
     dataLL = textscan(fid, '%f %f');
     latVal = dataLL{1};
     lonVal = dataLL{2};
-    save([pwd, '/Data/sitePowerPdf/', siteID, '.mat'], 'f', 'xi', 'meanPowGen', 'varPowGen', 'latVal', 'lonVal');
+    save([pwd, folderStr, siteID, '.mat'], 'f', 'xi', 'meanPowGen', 'varPowGen', 'latVal', 'lonVal');
     fprintf('data saved for siteID = %s\n', siteID);
 end
 
