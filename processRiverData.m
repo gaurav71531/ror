@@ -27,22 +27,21 @@ flowPowerFactor = 0.8 * 8 * 9.8 * 0.3038^3 / 1000;
 mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
 dStart = [11,0,0];
 dEnd = [11,0,0];
-folderStr = sprintf('/Data/sitePowerPdf%s/', mon{dStart(1)});
 % % % % % % % % % % % % % % % % % % % % % % % % % 
 % % % utility functions
 
 % arg: 0 -> extract and save
 % arg: 1 -> process riv and dem points
 % arg: 2 -> run ror placement algorithm
-arg = 0;
+arg = 2;
 
 switch arg
     case 0
         extractAndSave(dStart, dEnd);
         
     case 1
-        processRiverPt(folderStr);
-        processDemandPt();
+        processRiverPt(mon{dStart(1)});
+        processDemandPt(mon{dStart(1)});
         
     case 2
         % currentData is original without std
@@ -51,7 +50,10 @@ switch arg
         % currentDataNewTest.mat is with fft values
 
         % matObj = matfile('currentDataNew1.mat');
-        matObj = matfile('currentDataJun.mat');
+%         matObj = matfile('currentDataMar.mat');
+%         matObj = matfile('currentDataJun.mat');
+        fStr = sprintf('currentData%s.mat', mon{dStart(1)});
+        matObj = matfile(fStr);
         rivPt = matObj.rivPt;
         demPt = matObj.demPt;
         weakRivPtInd = matObj.weakRivPtInd;
@@ -71,13 +73,7 @@ switch arg
         
             
 end
-       
-
-% plotOutputData();
-
 % plotRiverCoord();
-
-
 
 
 function partitionSpaceForRor(mon)
@@ -235,14 +231,14 @@ for dInd = 1:numDemPt
         distClusterReshuffleCurrent = Inf;
 %         if dInd==76
 %         end
-        for i = 1:rorAllocated
+        for rorInd = 1:rorAllocated
             DTemp = D;
-            DTemp{i} = [DTemp{i}, dInd];
+            DTemp{rorInd} = [DTemp{rorInd}, dInd];
             
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
-                if checkValidAssociation(DTemp{i}, rivPt(rorAvailableSet(rorAvailableInd)))
-                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(DTemp{i}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
+                if checkValidAssociation(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
+                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
                 end     
@@ -250,7 +246,7 @@ for dInd = 1:numDemPt
             [dMinAvail, indMinAvail] = min(distRorAvailable);
             distClusterAvail = distCluster;
             
-            distClusterAvail(i) = dMinAvail;
+            distClusterAvail(rorInd) = dMinAvail;
             sumDistClusterAvail = sum(distClusterAvail);
             
             if sumDistClusterAvail < distClusterReshuffleCurrent
@@ -258,8 +254,8 @@ for dInd = 1:numDemPt
                 distClusterReshuffleCurrent = sumDistClusterAvail;
                 rorAvailableSetMin = rorAvailableSet;
                 rorOccupiedSetMin = rorOccupiedSet;
-                indReturn = rorOccupiedSet(i);
-                rorOccupiedSetMin(i) = rorAvailableSet(indMinAvail);
+                indReturn = rorOccupiedSet(rorInd);
+                rorOccupiedSetMin(rorInd) = rorAvailableSet(indMinAvail);
                 rorAvailableSetMin(indMinAvail) = indReturn;
                 DMin = DTemp;
 
@@ -394,7 +390,7 @@ assignin('base', 'demPt', demPt);
 assignin('base', 'lambda', lambda);
 fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%s.mat', lambda, length(demPt), mon);
 save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambda');
-plotOutputData(D, rorOccupiedSet, demPt, lambda);
+% plotOutputData(D, rorOccupiedSet, demPt, lambda);
 
 
 % function [rorAvailableSet,rorOccupiedSet,distCluster,newSiteNum] = performGroupReshuffle(rorAllocated, D, numRiverPt, rorAvailableSet, rorOccupiedSet, clusterTotDemPdf, distTotal, distCluster, fid, type)
@@ -706,11 +702,13 @@ end
 % grid;
 
 
-function processRiverPt(folderStr)
+function processRiverPt(month)
 
 
 global rivPt;
 global delXInPdf;
+
+folderStr = sprintf('/Data/sitePowerPdf%s/', month);
 % dataFile = {'latLon_Minnesota.mat', 'latLon_Iowa.mat', 'latLon_Illinois.mat', 'latLon_Missouri.mat', 'latLon_Wisconsin.mat'};
 % dataFile = {'latLon_Minnesota.mat'};
 % colorVec = {'b', 'r', ', 'm', 'c', 'k'};
@@ -793,13 +791,14 @@ end
 % assignin('base', 'meanVec', meanVec);
 
 
-function processDemandPt()
+function processDemandPt(month)
 
 
 global demPt;
 global delXInPdf;
 
-matObj = matfile([pwd '/Data/demand/demandProfile.mat']);
+fStr = sprintf('/Data/demand/demandProfile%s.mat', month);
+matObj = matfile([pwd fStr]);
 demPtTemp = matObj.demPt;
 
 x = 0:delXInPdf:3;

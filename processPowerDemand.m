@@ -3,14 +3,16 @@ close all;
 % % % % % 
 % month = march
 
-dBegin = [3,0,0];
+dBegin = [11,0,0];
 
 fileName = dir([pwd '/Data/demand/elecPowDemand/']);
 reqdStates = {'MN', 'IA', 'IL', 'WI', 'MO'};
 % mu = zeros(2,length(fileName));
 % sigSq = zeros(2,length(fileName));
 % alpha = zeros(1,length(fileName));
-matObj = matfile([pwd '/Data/demand/demandVars.mat']);
+% matObj = matfile([pwd '/Data/demand/demandVarsMar.mat']);
+% matObj = matfile([pwd '/Data/demand/demandVarsJun.mat']);
+matObj = matfile([pwd '/Data/demand/demandVarsNov.mat']);
 mu = matObj.mu;
 sigSq = matObj.sigSq;
 alpha = matObj.alpha;
@@ -23,7 +25,7 @@ for fileInd = 1:length(fileName)
     fileAcceptFlag = 0;
     for stateInd = 1:length(reqdStates)
         nameUse = textscan(fileName(fileInd).name(1:end-4), '%s', 'delimiter', '_');
-        if strcmp(nameUse{1}{3}, reqdStates{stateInd}),
+        if strcmp(nameUse{1}{3}, reqdStates{stateInd})
             fileAcceptFlag = 1;
             break;
         end
@@ -36,14 +38,13 @@ for fileInd = 1:length(fileName)
     powVal = zeros(length(dateAtime),1);
     powInd = 1;
     for dataInd = 1:length(dateAtime)
-        if str2double(dateAtime{dataInd}(1:2)) ==  dBegin(1),
+        if str2double(dateAtime{dataInd}(1:2)) ==  dBegin(1)
             powVal(powInd) = str2double(powerDemand{dataInd});
             powInd = powInd + 1;
         end
     end
     powVal(powInd:end) = [];
 %     [f,xi] = ksdensity(powVal);
-    figure;
 %     
 %     plot(xi, f);grid;
 %     xlabel('hourly power demand (kWh)');
@@ -61,14 +62,25 @@ for fileInd = 1:length(fileName)
     x = linspace(min(powVal), max(powVal), 100);
     deltaX = mean(diff(x));
     GMModel = fitgmdist(powVal,2);
-    y = pdf(GMModel,x');
+%     
+%     [muUse,ind] = sort(GMModel.mu, 'ascend');
+%     mu(:,paramInd) = muUse;
+%     alpha(paramInd) = max(GMModel.ComponentProportion);
+%     sigSqUse = squeeze(GMModel.Sigma);
+%     sigSq(:,paramInd) = sigSqUse(ind);
+%     paramInd = paramInd + 1;
     
+        figure;
+    y = pdf(GMModel,x');
+    plot(x, y*deltaX);grid;
+
     muUse_1 = mu.var(1) * randn() + mu.mean(1);
     muUse_2 = mu.var(2) * randn() + mu.mean(2);
+    alphaUse = 0.05 * randn() + alpha;
 %     sigSqUse_1 = sigSq.new(1) * sigSq.sigSq(1) / chi2rnd(sigSq.new(1));
 %     sigSqUse_2 = sigSq.new(2) * sigSq.sigSq(2) / chi2rnd(sigSq.new(2));
-    ygg = alpha * 1/sqrt(2*pi*sigSq(1))*exp(-(x-muUse_1).^2/2/sigSq(1)) + (1-alpha) * 1/sqrt(2*pi*sigSq(2))*exp(-(x-muUse_2).^2/2/sigSq(2));
-    plot(x, y*deltaX);grid;
+    ygg = alphaUse * 1/sqrt(2*pi*sigSq(1))*exp(-(x-muUse_1).^2/2/sigSq(1)) + (1-alphaUse) * 1/sqrt(2*pi*sigSq(2))*exp(-(x-muUse_2).^2/2/sigSq(2));
+
     hold on;
     plot(x, ygg*deltaX);grid;
 end
@@ -86,6 +98,7 @@ end
 % figure;
 % plot(1:paramInd-1, alpha);grid;
 
+% March
 % var = [0.022, 0.044];
 % mu = [0.92, 1.7];
 % alpha = 0.25;
@@ -94,3 +107,27 @@ end
 % mu.var = [0.1, 0.1];
 % sigSq.new = [0.022, 0.044];
 % sigSq.sigSq = [0.1, 0.1];
+
+% June
+
+% var = [0.022, 0.044];
+% mu = [0.67, 1.2];
+% alpha = 0.67;
+
+% mu.mean = [0.67, 1.2];
+% mu.var = [0.1, 0.1];
+% sigSq.new = [0.022, 0.044];
+% sigSq.sigSq = [0.1, 0.1];
+
+
+% Nov
+
+% var = [0.022, 0.044];
+% mu = [0.93, 1.87];
+% alpha = 0.79;
+
+% mu.mean = [0.93, 1.87];
+% mu.var = [0.1, 0.1];
+% sigSq.new = [0.022, 0.044];
+% sigSq.sigSq = [0.1, 0.1];
+

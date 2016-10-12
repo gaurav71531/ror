@@ -9,13 +9,14 @@ colorVec = {[1 0 0], [0 1 0], [0 0 1], [1 1 0], [1 0 1], [0 1 1], [0.7 0.1 0.9],
 % currentDataNew1.mat is with Nebraska
 % currentDataNewTest.mat is with fft values
 
-% matObj = matfile('currentDataNew1.mat');
-matObj = matfile('currentDataJun.mat');
+matObj = matfile('currentDataMar.mat');
+% matObj = matfile('currentDataJun.mat');
+% matObj = matfile('currentDataNov.mat');
 rivPt = matObj.rivPt;
 
 if nargin < 2
     lambda = 0.01;
-    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_576_Jun.mat', lambda);
+    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_576_Nov.mat', lambda);
     matObj = matfile([pwd '/OutputData/' inpFileStr]);
     D = matObj.D;
     rorOccupiedSet = matObj.rorOccupiedSet;
@@ -49,7 +50,7 @@ scatter([rivPt.xPos], [rivPt.yPos], 35, rivPtUnusedColor, 'filled');
 hold on;
 % scatter([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], 50, 'r', 'filled');
 
-matObj = matfile([pwd '/Data/demand/demandVars.mat']);
+matObj = matfile([pwd '/Data/demand/demandVarsMar.mat']);
 xAxesVal = matObj.xAxesVal;
 yAxesVal = matObj.yAxesVal;
 axis([xAxesVal yAxesVal]);
