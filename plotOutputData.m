@@ -2,6 +2,7 @@ function plotOutputData(varargin)
 
 
 colorVec = {[1 0 0], [0 1 0], [0 0 1], [1 1 0], [1 0 1], [0 1 1], [0.7 0.1 0.9], [0 0 0], [207 206 102]/255, [82 172 202]/255};
+mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
 % colorVec = {'b', 'r', 'g', 'm', 'c', 'k', 'y', 'w'};
 
 % currentData is original without std
@@ -16,7 +17,9 @@ rivPt = matObj.rivPt;
 
 if nargin < 2
     lambda = 0.01;
-    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_576_Nov.mat', lambda);
+    numDemPt = 288*2;
+    monInd = 6;
+    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_%d_%sTemp.mat', lambda,numDemPt,mon{monInd});
     matObj = matfile([pwd '/OutputData/' inpFileStr]);
     D = matObj.D;
     rorOccupiedSet = matObj.rorOccupiedSet;

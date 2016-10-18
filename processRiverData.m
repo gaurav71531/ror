@@ -25,8 +25,8 @@ flowPowerFactor = 0.8 * 8 * 9.8 * 0.3038^3 / 1000;
 
 % % % % Time period for river Data %%%%%%%%%%%
 mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
-dStart = [11,0,0];
-dEnd = [11,0,0];
+dStart = [6,0,0];
+dEnd = [6,0,0];
 % % % % % % % % % % % % % % % % % % % % % % % % % 
 % % % utility functions
 
@@ -49,40 +49,40 @@ switch arg
         % currentDataNew1.mat is with Nebraska
         % currentDataNewTest.mat is with fft values
 
-        % matObj = matfile('currentDataNew1.mat');
+%         matObj = matfile('currentDataNew1.mat');
 %         matObj = matfile('currentDataMar.mat');
-%         matObj = matfile('currentDataJun.mat');
-        fStr = sprintf('currentData%s.mat', mon{dStart(1)});
-        matObj = matfile(fStr);
+        matObj = matfile('currentDataJun.mat');
+%         fStr = sprintf('currentData%sWithFFT1.mat', mon{dStart(1)});
+%         matObj = matfile(fStr);
         rivPt = matObj.rivPt;
         demPt = matObj.demPt;
         weakRivPtInd = matObj.weakRivPtInd;
         weakRivPtIndNE = matObj.weakRivPtIndNE;
-        neInd = matObj.neInd;
+%         neInd = matObj.neInd;
 
-        % weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
-        % weakRivPtInd = [155,174:182];
-        % weakRivPtIndNE = [140,141];
+%         weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
+%         weakRivPtInd = [155,174:182];
+%         weakRivPtIndNE = [140,141];
         % neInd = [140:153];%nebraska 
 
         rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
 
-        % demPt = demPt(1:2:end);
+%         demPt = demPt(1:2:end);
         progress();
-        partitionSpaceForRor(mon{dStart(1)});
+        partitionSpaceForRor(demPt, rivPt, mon{dStart(1)});
         
             
 end
 % plotRiverCoord();
 
 
-function partitionSpaceForRor(mon)
+function partitionSpaceForRor(demPt, rivPt, mon)
 
 tic;
 timeBegin = toc;
 timeInit = timeBegin;
-global rivPt;
-global demPt;
+% global rivPt;
+% global demPt;
 global lambda;
 
 numDemPt = length(demPt);
@@ -95,8 +95,13 @@ K = 10;
 D = cell(K,1);
 distCluster = zeros(K,1);
 clusterTotDemPdf = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {});
+% clusterTotDemPdf = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {}, 'fft', {});
 % clusterTotDemPdf(K) = struct('pdf', []); % allocate empty struct
 % distTotal = sum(distCluster);
+demPdfTemp = [demPt.pdf];
+rivPdfTemp = [rivPt.pdf];
+demMeanPlusStdVec = [demPdfTemp.mean] + [demPdfTemp.std];
+rivMeanPlusStdVec = [rivPdfTemp.mean] + [rivPdfTemp.std];
 % % % LOG
 fid = fopen('runLog_full.txt', 'w');
 
@@ -106,17 +111,19 @@ for dInd = 1:numDemPt
 %         disp('gg');
 %     end
     distOfOccupied = zeros(rorAllocated,1);
-    IsValidAssociation = zeros(rorAllocated,1);
     demPtAssociationFlag = 0;
     clusterTotDemPdfTemp = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {});
+%     clusterTotDemPdfTemp = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {}, 'fft', {});
     for occRorInd = 1:rorAllocated
-        demClusterInd = [];
-        for dInClusterInd = 1:length(D{occRorInd})
-            demClusterInd = [demClusterInd, D{occRorInd}(dInClusterInd)];
-        end
-        demClusterInd = [demClusterInd,dInd];
-        if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
-            [distOfOccupied(occRorInd),clusterTotDemPdfTemp(occRorInd)] = getTotalDistance(demClusterInd, rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
+%         demClusterInd = [];
+%         for dInClusterInd = 1:length(D{occRorInd})
+%             demClusterInd = [demClusterInd, D{occRorInd}(dInClusterInd)];
+%         end
+%         demClusterInd = [demClusterInd,dInd];
+        demClusterInd = [D{occRorInd},dInd];
+%         if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
+        if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorInd)))
+            [distOfOccupied(occRorInd),clusterTotDemPdfTemp(occRorInd)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
             demPtAssociationFlag = 1;
         else
             distOfOccupied(occRorInd) = Inf;
@@ -124,8 +131,9 @@ for dInd = 1:numDemPt
     end
     distOfAvailable = zeros(numRiverPt - rorAllocated,1);
     for rorAvailInd = 1:length(rorAvailableSet)
-        if checkValidAssociation(dInd, rivPt(rorAvailableSet(rorAvailInd)))
-            distOfAvailable(rorAvailInd) = getTotalDistance(dInd, rivPt(rorAvailableSet(rorAvailInd)), 'ind', []);
+        if checkValidAssociation(demMeanPlusStdVec(dInd), rivMeanPlusStdVec(rorAvailableSet(rorAvailInd)))
+%         if checkValidAssociation(dInd, rivPt(rorAvailableSet(rorAvailInd)))
+            distOfAvailable(rorAvailInd) = getTotalDistance(demPt(dInd), rivPt(rorAvailableSet(rorAvailInd)), 'ind', []);
             demPtAssociationFlag = 1;
         else
             distOfAvailable(rorAvailInd) = Inf;
@@ -184,10 +192,11 @@ for dInd = 1:numDemPt
             if length(D{rorInd}) == 1, continue;end
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
-                if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
+                if checkValidAssociation(demMeanPlusStdVec(D{rorInd}), rivMeanPlusStdVec(rorAvailableSet(rorAvailableInd)))
+%                 if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
 %                     if length(clusterTotDemPdf(rorInd).nzStartInd) >1
 %                     end
-                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
+                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(demPt(D{rorInd}), rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
                 end     
@@ -229,6 +238,7 @@ for dInd = 1:numDemPt
 %         This would require entire group to look for new ROR-site
         reshuffleFlag = 0;
         distClusterReshuffleCurrent = Inf;
+        clusterTotDemPdfTemp = clusterTotDemPdf;
 %         if dInd==76
 %         end
         for rorInd = 1:rorAllocated
@@ -237,8 +247,9 @@ for dInd = 1:numDemPt
             
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
-                if checkValidAssociation(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
-                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
+                if checkValidAssociation(demMeanPlusStdVec(DTemp{rorInd}), rivMeanPlusStdVec(rorAvailableSet(rorAvailableInd)))
+%                 if checkValidAssociation(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
+                    [distRorAvailable(rorAvailableInd), clusterTotDemPdfTemp(rorInd)] = getTotalDistance(demPt(DTemp{rorInd}), rivPt(rorAvailableSet(rorAvailableInd)), 'ind', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
                 end     
@@ -262,6 +273,8 @@ for dInd = 1:numDemPt
                 indReshuffleMin = indReturn;
                 reshuffleFlag = 1;
                 newSiteNum = rorAvailableSet(indMinAvail);
+                
+                clusterTotDemPdfTempMin = clusterTotDemPdfTemp;
             end
         end
         if reshuffleFlag
@@ -269,13 +282,13 @@ for dInd = 1:numDemPt
             rorAvailableSet = rorAvailableSetMin;
             rorOccupiedSet = rorOccupiedSetMin;
             D = DMin;
+            clusterTotDemPdf = clusterTotDemPdfTempMin;
             fprintf(fid, 'group with ROR-%d moved to site-%d due to insufficiency\n', indReshuffleMin, newSiteNum);
         else
             fprintf('New demPt-%d cannot be associated anywhere and anyhow by the program, will termonate\n', dInd);
         end        
     end
     
-
     
 %     coordinate descent (reshuffling)
 
@@ -292,12 +305,14 @@ for dInd = 1:numDemPt
         distClusterRef = distCluster;
         clusterTotDemPdfRef = clusterTotDemPdf;
         DTempRef{occRorInd}(DTempRef{occRorInd} == dInOccRorInd) = [];
-        demClusterInd = [];
-        for i = 1:length(DTempRef{occRorInd})
-            demClusterInd = [demClusterInd, DTempRef{occRorInd}(i)];
-        end
-        if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
-            [distClusterRef(occRorInd), clusterTotDemPdfRef(occRorInd)] = getTotalDistance(demClusterInd, rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
+%         demClusterInd = [];
+%         for i = 1:length(DTempRef{occRorInd})
+%             demClusterInd = [demClusterInd, DTempRef{occRorInd}(i)];
+%         end
+        demClusterInd = DTempRef{occRorInd};
+        if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorInd)))
+%         if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
+            [distClusterRef(occRorInd), clusterTotDemPdfRef(occRorInd)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
         else
             disp('some error here');
             distClusterRef(occRorInd) = Inf;
@@ -308,14 +323,16 @@ for dInd = 1:numDemPt
             if (occRorIndNext == occRorInd), continue;end
             DTemp = DTempRef;
             DTemp{occRorIndNext} = [DTemp{occRorIndNext}, dInOccRorInd];
-            demClusterInd = [];
-            for i = 1:length(DTemp{occRorIndNext})
-                demClusterInd = [demClusterInd, DTemp{occRorIndNext}(i)];
-            end
+%             demClusterInd = [];
+%             for i = 1:length(DTemp{occRorIndNext})
+%                 demClusterInd = [demClusterInd, DTemp{occRorIndNext}(i)];
+%             end
+            demClusterInd = DTemp{occRorIndNext};
             distClusterTemp = distClusterRef;
             clusterTotDemPdfTemp = clusterTotDemPdfRef;
-            if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorIndNext)))
-                [distClusterTemp(occRorIndNext), clusterTotDemPdfTemp(occRorIndNext)] = getTotalDistance(demClusterInd, rivPt(rorOccupiedSet(occRorIndNext)), 'ind', []);
+            if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorIndNext)))
+%             if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorIndNext)))
+                [distClusterTemp(occRorIndNext), clusterTotDemPdfTemp(occRorIndNext)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorIndNext)), 'ind', []);
             else
                 distClusterTemp(occRorIndNext) = Inf;
             end
@@ -388,7 +405,7 @@ assignin('base', 'distCluster', distCluster);
 assignin('base', 'rivPt', rivPt);
 assignin('base', 'demPt', demPt);
 assignin('base', 'lambda', lambda);
-fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%s.mat', lambda, length(demPt), mon);
+fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%sTemp.mat', lambda, length(demPt), mon);
 save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambda');
 % plotOutputData(D, rorOccupiedSet, demPt, lambda);
 
@@ -448,42 +465,78 @@ save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambd
 % end
 
 
-function [val, demPdf] = getTotalDistance(demClusterInd, rivPt, type, pdfUse)
+function [val, demPdf] = getTotalDistance(demClusterPt, rivPt, type, pdfUse)
 
-global demPt;
+% global demPt;
 global lambda;
 
 demPdf = struct('x', [], 'y', [], 'nzStartInd', [], 'nzEndInd', [], 'mean', [], 'std', []);
+% demPdf = struct('x', [], 'y', [], 'nzStartInd', [], 'nzEndInd', [], 'mean', [], 'std', [], 'fft', []);
 
-if isempty(demClusterInd)
+if isempty(demClusterPt)
     val = 0;
     return;
 end
 euclideanDist = 0;
-for i = 1:length(demClusterInd)
-    euclideanDist = euclideanDist + (demPt(demClusterInd(i)).xPos - rivPt.xPos)^2 ...
-        + (demPt(demClusterInd(i)).yPos - rivPt.yPos)^2;
+for i = 1:length(demClusterPt)
+    euclideanDist = euclideanDist + (demClusterPt(i).xPos - rivPt.xPos)^2 ...
+        + (demClusterPt(i).yPos - rivPt.yPos)^2;
 end
 
 if strcmp(type, 'ind') 
-    if length(demClusterInd) == 1
-        demPdf = demPt(demClusterInd(1)).pdf;
+    if length(demClusterPt) == 1
+        demPdf = demClusterPt(1).pdf;
     else
-        pdf1 = demPt(demClusterInd(1)).pdf;
-        for i = 2:length(demClusterInd)
-            pdf2 = demPt(demClusterInd(i)).pdf;
+        pdf1 = demClusterPt(1).pdf;
+        for i = 2:length(demClusterPt)
+            pdf2 = demClusterPt(i).pdf;
             demPdf = convolve(pdf1, pdf2);
             pdf1 = demPdf;
         end
+%         demPdf = computerDemPdfParallel(demClusterPt);
     end
 elseif strcmp(type, 'pdf')
     demPdf = pdfUse;
 end
-if length(demPdf.nzStartInd) > 1
-end
+% demPdf.fft = [];
 klDist = getKLDist(demPdf, rivPt.pdf);
 
 val = klDist + lambda* euclideanDist;
+
+
+function demPdf = computerDemPdfParallel(demPt)
+
+if length(demPt) == 1
+    demPdf = demPt(1).pdf;
+    return
+end
+
+% demPtNew = struct('xPos', {}, 'yPos', {}, 'pdf', {});
+% demPtNew(length(demPt)) = struct('xPos', [], 'yPos', [], 'pdf', []);
+if rem(length(demPt),2)
+    lenBy2 = (length(demPt)-1)/2;
+    demPt1 = demPt(1:lenBy2);
+    demPt2 = demPt(lenBy2+1:lenBy2*2);
+    demPtNew = struct('xPos', cell(1,length(lenBy2+1)), 'yPos', cell(1,length(lenBy2+1)), 'pdf', cell(1,length(lenBy2+1)));
+    for i = 1:lenBy2
+        demPtTemp = struct('xPos', [], 'yPos', [], 'pdf', convolve(demPt1(i).pdf, demPt2(i).pdf));
+        demPtNew(i) = demPtTemp;
+%         demPtNew(i).pdf = convolve(demPt1(i).pdf, demPt2(i).pdf);
+    end
+    demPtNew(lenBy2+1).pdf = demPt(end).pdf;
+else
+    lenBy2 = length(demPt)/2;
+    demPt1 = demPt(1:lenBy2);
+    demPt2 = demPt(lenBy2+1:end);
+    demPtNew = struct('xPos', cell(1,length(lenBy2)), 'yPos', cell(1,length(lenBy2)), 'pdf', cell(1,length(lenBy2)));
+    for i = 1:lenBy2
+        demPtTemp = struct('xPos', [], 'yPos', [], 'pdf', convolve(demPt1(i).pdf, demPt2(i).pdf));
+        demPtNew(i) = demPtTemp;
+%         demPtNew(i).pdf = convolve(demPt1(i).pdf, demPt2(i).pdf);
+    end
+end
+
+demPdf = computerDemPdfParallel(demPtNew);
 
 
 function val = getKLDist(p, q)
@@ -492,28 +545,44 @@ function val = getKLDist(p, q)
 global delXInPdf;
 global epsilon;
 
-val = 0;
-
-for pLocalInd = 1:length(p.y)
-    actualInd = p.nzStartInd + pLocalInd - 1;
-    try
-    if actualInd >= q.nzStartInd && actualInd <= q.nzEndInd
-        qLocalInd = actualInd - q.nzStartInd + 1;
-    end
-    catch
-    end
-    if actualInd < q.nzStartInd || actualInd > q.nzEndInd
-        qValUse = epsilon;
-    else % in between closed interval 
-        if q.y(qLocalInd) < epsilon
-            qValUse = epsilon;
-        else
-            qValUse = q.y(qLocalInd);
-        end
-    end
-
-    val = val + p.y(pLocalInd) * log2(p.y(pLocalInd) / qValUse) * delXInPdf;
+% val = 0;
+% 
+% for pLocalInd = 1:length(p.y)
+%     actualInd = p.nzStartInd + pLocalInd - 1;
+% %     try
+%     if actualInd >= q.nzStartInd && actualInd <= q.nzEndInd
+%         qLocalInd = actualInd - q.nzStartInd + 1;
+%     end
+% %     catch
+% %     end
+%     if actualInd < q.nzStartInd || actualInd > q.nzEndInd
+%         qValUse = epsilon;
+%     else % in between closed interval 
+%         if q.y(qLocalInd) < epsilon
+%             qValUse = epsilon;
+%         else
+%             qValUse = q.y(qLocalInd);
+%         end
+%     end
+%     val = val + p.y(pLocalInd) * log2(p.y(pLocalInd) / qValUse) * delXInPdf;
+% end
+if p.nzStartInd- q.nzStartInd + 1 <= 0
+    qLocalStartInd = 1;
+    pLocalOffsetInd = -p.nzStartInd + q.nzStartInd + 1;
+else
+    qLocalStartInd = p.nzStartInd - q.nzStartInd + 1;
+    pLocalOffsetInd = 1;
 end
+
+qLocalStopInd = min(p.nzStartInd + length(p.y) - 1, q.nzEndInd) - q.nzStartInd + 1;
+
+qUse = q.y(qLocalStartInd:qLocalStopInd);
+qUse(qUse < epsilon) = epsilon;
+qTemp = ones(1,length(p.y))*epsilon;
+qTemp(pLocalOffsetInd:pLocalOffsetInd+length(qUse)-1) = qUse;
+
+val = sum(p.y .* log2(p.y ./ qTemp)) * delXInPdf;
+% 
 if isnan(val), val = Inf;end
 
 
@@ -521,8 +590,9 @@ function out = convolve(fcn1, fcn2)
 
 global delXInPdf;
 % needs struct with x, y and non-zero interval [nzStartInd, nzEndInd]
+% out = struct('x', 0, 'y', 0, 'nzStartInd', 0, 'nzEndInd', 0, 'mean', 0, 'std', 0);
 out.x = 0;
-out.y = 0;
+% out.y = 0;
 % x1 and x2 must have same starting point and same step-size
 % if (fcn1.x(1) ~= fcn2.x(1)), 
 %     fprintf('error in input x-axis format\n');
@@ -543,7 +613,8 @@ numZerosBegin = fcn1.nzStartInd + fcn2.nzStartInd - 2;
 % out.nzStartInd = numZerosBegin + sTemp;
 % out.nzEndInd = numZerosBegin + eTemp;
 y = conv(fcn1.y, fcn2.y);
-y = y * delXInPdf;
+% y = y * delXInPdf;
+y = y * 0.05;
 [s, e] = getNZInterval(y);
 out.nzStartInd = numZerosBegin + s; 
 % length(out.nzStartInd)
@@ -571,135 +642,23 @@ for i = 1:length(D)
 end
 
 
-function out = checkValidAssociation(demClusterInd, rivPt)
+% function out = checkValidAssociation(demClusterInd, rivPt)
+function out = checkValidAssociation(dem, gen)
 
-global demPt;
+% global demPt;
 out = 0;
 
-sumMeanStd = 0;
-for i = 1:length(demClusterInd)
-    sumMeanStd = sumMeanStd + demPt(demClusterInd(i)).pdf.mean + demPt(demClusterInd(i)).pdf.std;
-end
-
-if sumMeanStd < rivPt.pdf.mean + rivPt.pdf.std
+% sumMeanStd = 0;
+% for i = 1:length(demClusterInd)
+%     sumMeanStd = sumMeanStd + demPt(demClusterInd(i)).pdf.mean + demPt(demClusterInd(i)).pdf.std;
+% end
+if sum(dem) < gen
     out = 1;
 end
 
-
-% function plotOutputData(varargin)
-% 
-% global demPt;
-% global rivPt;
-% global lambda;
-% 
-% colorVec = {[1 0 0], [0 1 0], [0 0 1], [1 1 0], [1 0 1], [0 1 1], [0.7 0.1 0.9], [0 0 0], [1, 0.5, 0.5], [0.5, 0.5, 0.5]};
-% % colorVec = {'b', 'r', 'g', 'm', 'c', 'k', 'y', 'w'};
-% 
-% matObj = matfile('currentData.mat');
-% rivPt = matObj.rivPt;
-% % demPt = matObj.demPt;
-% % demPt = demPt(1:2:end);
-% 
-% if nargin < 2
-%     matObj = matfile([pwd '/OutputData/output_lambda_0.000_numDemPt_576.mat']);
-%     D = matObj.D;
-%     rorOccupiedSet = matObj.rorOccupiedSet;
-%     demPt = matObj.demPt;
-% else
-%     D = varargin{1};
-%     rorOccupiedSet = varargin{2};
-%     demPt = varargin{3};
+% if sumMeanStd < rivPt.pdf.mean + rivPt.pdf.std
+%     out = 1;
 % end
-% D = D(1:length(rorOccupiedSet));
-%     
-% 
-% % reorder based on cardinality
-% cardSet = cellfun(@(x) length(x), D);
-% [~, ind] = sort(cardSet, 'descend');
-% D = D(ind);
-% rorOccupiedSet = rorOccupiedSet(ind);
-% 
-% % figure;
-% % colormap jet;
-% % scatter([rivPt.xPos], [rivPt.yPos], 35, [255,214,211]/255, 'filled');
-% % hold on;
-% % % scatter([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], 50, 'r', 'filled');
-% % c = cellstr(num2str(rorOccupiedSet'));
-% % text([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], c, 'color', 'k','fontsize', 12);
-% % % colorbar;
-% % xlabel('x (\times 100 km)');
-% % ylabel('y (\times 100 km)');
-% % grid;
-% % 
-% % % adding demand pts
-% % hold on;
-% % 
-% % for i = 1:length(rorOccupiedSet)
-% %     scatter(rivPt(rorOccupiedSet(i)).xPos, rivPt(rorOccupiedSet(i)).yPos, 70, colorVec{i}, 'filled');
-% %     hold on;
-% %     scatter([demPt(D{i}).xPos], [demPt(D{i}).yPos], 10, colorVec{i});
-% %     hold on;
-% % end
-% % hold off;
-% % 
-% % matObj = matfile([pwd '/Data/demand/demandVars.mat']);
-% % xAxesVal = matObj.xAxesVal;
-% % yAxesVal = matObj.yAxesVal;
-% % axis([xAxesVal yAxesVal]);
-% 
-% % figure with patches
-% 
-% figure;
-% colormap jet;
-% % rivPtUnusedColor = [255,214,211]/255;
-% % rivPtUnusedColor =[149, 144, 144]/255;
-% % rivPtUnusedColor =[171, 168, 168]/255;
-% rivPtUnusedColor =[180, 180, 180]/255;
-% scatter([rivPt.xPos], [rivPt.yPos], 35, rivPtUnusedColor, 'filled');
-% hold on;
-% % scatter([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], 50, 'r', 'filled');
-% delXText = 0.1;
-% c = cellstr(num2str(rorOccupiedSet'));
-% text([rivPt(rorOccupiedSet).xPos]+delXText, [rivPt(rorOccupiedSet).yPos], c, 'color', 'k','fontsize', 12);
-% % colorbar;
-% 
-% % adding demand pts
-% hold on;
-% 
-% for i = 1:length(rorOccupiedSet)
-%     scatter(rivPt(rorOccupiedSet(i)).xPos, rivPt(rorOccupiedSet(i)).yPos, 100, colorVec{i}, 'filled','d');
-%     hold on;
-% end
-% hold off;
-% 
-% matObj = matfile([pwd '/Data/demand/demandVars.mat']);
-% xAxesVal = matObj.xAxesVal;
-% yAxesVal = matObj.yAxesVal;
-% axis([xAxesVal yAxesVal]);
-% 
-% % add patches
-% xArr = [demPt.xPos] - demPt(1).xPos;
-% nZXArr = xArr > 0;
-% xDiff = min(xArr(nZXArr)); % closest neighbor in grid
-% 
-% yArr = [demPt.yPos] - demPt(1).yPos;
-% nZYArr = yArr > 0;
-% yDiff = min(yArr(nZYArr)); % closest neighbor in grid
-% 
-% hold on;
-% for i = 1:length(D)
-%     for j = 1:length(D{i})
-%         demPtCoord = [demPt(D{i}(j)).xPos,demPt(D{i}(j)).yPos];
-%         vert = repmat(demPtCoord, 4, 1) + [xDiff, yDiff; xDiff, -yDiff ; -xDiff, -yDiff; -xDiff, yDiff]/2;
-%         patch('faces', [1,2,3,4], 'Vertices', vert, 'Facecolor', colorVec{i}, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
-%     end
-% end
-% 
-% xlabel('x (\times 100 km)');
-% ylabel('y (\times 100 km)');
-% titStr = sprintf('(numRivPt, numDemPt) = (%d, %d), \lambda = %4.3f', length(rivPt), length(demPt), lambda);
-% title(titStr);
-% grid;
 
 
 function processRiverPt(month)
@@ -847,7 +806,8 @@ y = @(x) alpha * 1/sqrt(2*pi*sigSq(1))*exp(-(x-mu(1)).^2/2/sigSq(1)) ...
 
 function [s, e] = getNZInterval(y)
 
-global epsilon;
+% global epsilon;
+epsilon = 1e-9;
 
 nz = y >= epsilon;
 s = find(nz, 1, 'first');
@@ -1017,3 +977,118 @@ elseif strcmp(typ, 'month')
         out = 1;
     end
 end
+
+% function plotOutputData(varargin)
+% 
+% global demPt;
+% global rivPt;
+% global lambda;
+% 
+% colorVec = {[1 0 0], [0 1 0], [0 0 1], [1 1 0], [1 0 1], [0 1 1], [0.7 0.1 0.9], [0 0 0], [1, 0.5, 0.5], [0.5, 0.5, 0.5]};
+% % colorVec = {'b', 'r', 'g', 'm', 'c', 'k', 'y', 'w'};
+% 
+% matObj = matfile('currentData.mat');
+% rivPt = matObj.rivPt;
+% % demPt = matObj.demPt;
+% % demPt = demPt(1:2:end);
+% 
+% if nargin < 2
+%     matObj = matfile([pwd '/OutputData/output_lambda_0.000_numDemPt_576.mat']);
+%     D = matObj.D;
+%     rorOccupiedSet = matObj.rorOccupiedSet;
+%     demPt = matObj.demPt;
+% else
+%     D = varargin{1};
+%     rorOccupiedSet = varargin{2};
+%     demPt = varargin{3};
+% end
+% D = D(1:length(rorOccupiedSet));
+%     
+% 
+% % reorder based on cardinality
+% cardSet = cellfun(@(x) length(x), D);
+% [~, ind] = sort(cardSet, 'descend');
+% D = D(ind);
+% rorOccupiedSet = rorOccupiedSet(ind);
+% 
+% % figure;
+% % colormap jet;
+% % scatter([rivPt.xPos], [rivPt.yPos], 35, [255,214,211]/255, 'filled');
+% % hold on;
+% % % scatter([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], 50, 'r', 'filled');
+% % c = cellstr(num2str(rorOccupiedSet'));
+% % text([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], c, 'color', 'k','fontsize', 12);
+% % % colorbar;
+% % xlabel('x (\times 100 km)');
+% % ylabel('y (\times 100 km)');
+% % grid;
+% % 
+% % % adding demand pts
+% % hold on;
+% % 
+% % for i = 1:length(rorOccupiedSet)
+% %     scatter(rivPt(rorOccupiedSet(i)).xPos, rivPt(rorOccupiedSet(i)).yPos, 70, colorVec{i}, 'filled');
+% %     hold on;
+% %     scatter([demPt(D{i}).xPos], [demPt(D{i}).yPos], 10, colorVec{i});
+% %     hold on;
+% % end
+% % hold off;
+% % 
+% % matObj = matfile([pwd '/Data/demand/demandVars.mat']);
+% % xAxesVal = matObj.xAxesVal;
+% % yAxesVal = matObj.yAxesVal;
+% % axis([xAxesVal yAxesVal]);
+% 
+% % figure with patches
+% 
+% figure;
+% colormap jet;
+% % rivPtUnusedColor = [255,214,211]/255;
+% % rivPtUnusedColor =[149, 144, 144]/255;
+% % rivPtUnusedColor =[171, 168, 168]/255;
+% rivPtUnusedColor =[180, 180, 180]/255;
+% scatter([rivPt.xPos], [rivPt.yPos], 35, rivPtUnusedColor, 'filled');
+% hold on;
+% % scatter([rivPt(rorOccupiedSet).xPos], [rivPt(rorOccupiedSet).yPos], 50, 'r', 'filled');
+% delXText = 0.1;
+% c = cellstr(num2str(rorOccupiedSet'));
+% text([rivPt(rorOccupiedSet).xPos]+delXText, [rivPt(rorOccupiedSet).yPos], c, 'color', 'k','fontsize', 12);
+% % colorbar;
+% 
+% % adding demand pts
+% hold on;
+% 
+% for i = 1:length(rorOccupiedSet)
+%     scatter(rivPt(rorOccupiedSet(i)).xPos, rivPt(rorOccupiedSet(i)).yPos, 100, colorVec{i}, 'filled','d');
+%     hold on;
+% end
+% hold off;
+% 
+% matObj = matfile([pwd '/Data/demand/demandVars.mat']);
+% xAxesVal = matObj.xAxesVal;
+% yAxesVal = matObj.yAxesVal;
+% axis([xAxesVal yAxesVal]);
+% 
+% % add patches
+% xArr = [demPt.xPos] - demPt(1).xPos;
+% nZXArr = xArr > 0;
+% xDiff = min(xArr(nZXArr)); % closest neighbor in grid
+% 
+% yArr = [demPt.yPos] - demPt(1).yPos;
+% nZYArr = yArr > 0;
+% yDiff = min(yArr(nZYArr)); % closest neighbor in grid
+% 
+% hold on;
+% for i = 1:length(D)
+%     for j = 1:length(D{i})
+%         demPtCoord = [demPt(D{i}(j)).xPos,demPt(D{i}(j)).yPos];
+%         vert = repmat(demPtCoord, 4, 1) + [xDiff, yDiff; xDiff, -yDiff ; -xDiff, -yDiff; -xDiff, yDiff]/2;
+%         patch('faces', [1,2,3,4], 'Vertices', vert, 'Facecolor', colorVec{i}, 'FaceAlpha', 0.1, 'EdgeColor', 'none');
+%     end
+% end
+% 
+% xlabel('x (\times 100 km)');
+% ylabel('y (\times 100 km)');
+% titStr = sprintf('(numRivPt, numDemPt) = (%d, %d), \lambda = %4.3f', length(rivPt), length(demPt), lambda);
+% title(titStr);
+% grid;
