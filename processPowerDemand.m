@@ -49,12 +49,12 @@ for fileInd = 1:length(fileName)
 %     plot(xi, f);grid;
 %     xlabel('hourly power demand (kWh)');
 %     ylabel('pdf');
-%     figure;
-%     
-% %     hold on;
-%     [counts, centers] = hist(powVal, 100);
-%     
-%     stem(centers, counts/(powInd-1));
+    figure;
+    
+%     hold on;
+    [counts, centers] = hist(powVal, 100);
+    
+    stem(centers, counts/(powInd-1));
 %     
 %     mu = mean(powVal);
 %     sigSq = var(powVal);
@@ -70,9 +70,10 @@ for fileInd = 1:length(fileName)
 %     sigSq(:,paramInd) = sigSqUse(ind);
 %     paramInd = paramInd + 1;
     
-        figure;
+%         figure;
+    hold on;        
     y = pdf(GMModel,x');
-    plot(x, y*deltaX);grid;
+    plot(x, y*deltaX, 'linewidth', 1.5, 'color', [38 106 46]/255);grid;
 
     muUse_1 = mu.var(1) * randn() + mu.mean(1);
     muUse_2 = mu.var(2) * randn() + mu.mean(2);

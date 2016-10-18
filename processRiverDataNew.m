@@ -23,35 +23,58 @@ end
 % to m^3) / 1000 (for kW)
 flowPowerFactor = 0.8 * 8 * 9.8 * 0.3038^3 / 1000;
 
+% % % % Time period for river Data %%%%%%%%%%%
+mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
+dStart = [3,0,0];
+dEnd = [3,0,0];
+% % % % % % % % % % % % % % % % % % % % % % % % % 
 % % % utility functions
 
-% extractAndSave();
-% processRiverPt();
-% processDemandPt();
+% arg: 0 -> extract and save
+% arg: 1 -> process riv and dem points
+% arg: 2 -> run ror placement algorithm
+arg = 2;
 
-% plotOutputData();
+switch arg
+    case 0
+        extractAndSave(dStart, dEnd);
+        
+    case 1
+        processRiverPt(mon{dStart(1)});
+        processDemandPt(mon{dStart(1)});
+        
+    case 2
+        % currentData is original without std
+        % currentDataNew is with some modifications in pdf mean and std
+        % currentDataNew1.mat is with Nebraska
+        % currentDataNewTest.mat is with fft values
 
-% currentData is original without std
-% currentDataNew is with some modifications in pdf mean and std
-% currentDataNew1.mat is with Nebraska
+        % matObj = matfile('currentDataNew1.mat');
+%         matObj = matfile('currentDataMar.mat');
+%         matObj = matfile('currentDataJun.mat');
+        fStr = sprintf('currentData%sWithFFT.mat', mon{dStart(1)});
+        matObj = matfile(fStr);
+        rivPt = matObj.rivPt;
+        demPt = matObj.demPt;
+        weakRivPtInd = matObj.weakRivPtInd;
+        weakRivPtIndNE = matObj.weakRivPtIndNE;
+        neInd = matObj.neInd;
 
-matObj = matfile('currentDataNewTest.mat');
-rivPt = matObj.rivPt;
-demPt = matObj.demPt;
+        % weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
+        % weakRivPtInd = [155,174:182];
+        % weakRivPtIndNE = [140,141];
+        % neInd = [140:153];%nebraska 
 
-% weakRivPtInd = [3,6,7,11,14, 16:18, 21, 29:34, 40,45:46, 55, 62:65, 69:83, 86:91, 94, 99, 103, 105, 107, 108, 115, 126, 129, 130, 135, 138, 141:145, 148, 152, 160:168];
-weakRivPtInd = [155,174:182];
-weakRivPtIndNE = [140,141];
-neInd = [140:153];%nebraska 
+        rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
 
-rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
-
-demPt = demPt(1:2:end);
-
+        demPt = demPt(1:2:end);
+        progress();
+        partitionSpaceForRor();
+%         partitionSpaceForRor(mon{dStart(1)});
+        
+            
+end
 % plotRiverCoord();
-
-progress();
-partitionSpaceForRor();
 
 
 function partitionSpaceForRor()
@@ -77,13 +100,12 @@ clusterTotDemPdf = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'm
 % clusterTotDemPdf(K) = struct('pdf', []); % allocate empty struct
 % distTotal = sum(distCluster);
 % % % LOG
-fid = fopen('runLog_full.txt', 'w');
+fid = fopen('runLog_WithFFT.txt', 'w');
 
 for dInd = 1:numDemPt
 %     first allocation
-%     if dInd == 77
-%         disp('gg');
-%     end
+    if dInd == 44
+    end
     distOfOccupied = zeros(rorAllocated,1);
 %     IsValidAssociation = zeros(rorAllocated,1);
     demPtAssociationFlag = 0;
@@ -154,6 +176,9 @@ for dInd = 1:numDemPt
             distCluster = distClusterWAvail;
             clusterTotDemPdf(rorAllocated) = demPt(dInd).pdf;
             
+            if rorAllocated == 2
+            end
+            
             clusterVars{rorAllocated,3} = [clusterTotDemPdf(rorAllocated).nzStartInd,...
                 clusterTotDemPdf(rorAllocated).nzEndInd,...
                 clusterTotDemPdf(rorAllocated).mean,...
@@ -165,6 +190,9 @@ for dInd = 1:numDemPt
             D{indMinOcc} = [D{indMinOcc}, dInd];
             distCluster = distClusterWOcc;
             clusterTotDemPdf(indMinOcc) = clusterTotDemPdfTemp(indMinOcc);
+            
+            if isempty(clusterTotDemPdf(indMinOcc).nzStartInd)
+            end
             
             clusterVars{indMinOcc,3} = [clusterTotDemPdf(indMinOcc).nzStartInd, ...
                 clusterTotDemPdf(indMinOcc).nzEndInd, ...
@@ -233,7 +261,7 @@ for dInd = 1:numDemPt
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
                 if checkValidAssociation(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
-                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
+                    [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)), 'ind', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
                 end     
@@ -269,7 +297,6 @@ for dInd = 1:numDemPt
             fprintf('New demPt-%d cannot be associated anywhere and anyhow by the program, will termonate\n', dInd);
         end        
     end
-    
 
     
 %     coordinate descent (reshuffling)
@@ -339,11 +366,15 @@ for dInd = 1:numDemPt
         if reshuffleFlag
             distCluster = distClusterMin;
             clusterTotDemPdf = clusterTotDemPdfMin;
+            if occRorInd == 2
+            end
 %             
             clusterVars{occRorInd,3} = [clusterTotDemPdf(occRorInd).nzStartInd, ...
                 clusterTotDemPdf(occRorInd).nzEndInd, ...
                 clusterTotDemPdf(occRorInd).mean, ...
                 clusterTotDemPdf(occRorInd).std];
+            if reshuffleNextInd == 2
+            end
             
             clusterVars{reshuffleNextInd,3} = [clusterTotDemPdf(reshuffleNextInd).nzStartInd, ...
                 clusterTotDemPdf(reshuffleNextInd).nzEndInd, ...
@@ -412,7 +443,7 @@ assignin('base', 'distCluster', distCluster);
 assignin('base', 'rivPt', rivPt);
 assignin('base', 'demPt', demPt);
 assignin('base', 'lambda', lambda);
-fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d.mat', lambda, length(demPt));
+fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%dWithFFT.mat', lambda, length(demPt));
 save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambda');
 plotOutputData(D, rorOccupiedSet, demPt, lambda);
 
@@ -425,7 +456,7 @@ global demPt;
 global lambda;
 global delXInPdf;
 
-% demPdf = struct('x', [], 'y', [], 'nzStartInd', [], 'nzEndInd', [], 'mean', [], 'std', [], 'fft', []);
+demPdf = struct('x', [], 'y', [], 'nzStartInd', [], 'nzEndInd', [], 'mean', [], 'std', [], 'fft', []);
 
 lenSinglePdf = length(demPt(1).pdf.y);
 if strcmp(task, 'add')
@@ -438,12 +469,19 @@ if strcmp(task, 'add')
         + (demPt(dInd).yPos - rivPt.yPos)^2;
     
     lenPdf = (length(D{demClusterBaseInd})+1)*lenSinglePdf - (length(D{demClusterBaseInd}));
-    
+    try
     numZerosBegin = clusterVars{demClusterBaseInd,3}(1) + demPt(dInd).pdf.nzStartInd - 2;
+    catch
+    end
     
     mean = clusterVars{demClusterBaseInd,3}(3) + demPt(dInd).pdf.mean;
     std = sqrt(clusterVars{demClusterBaseInd,3}(4)^2 + demPt(dInd).pdf.std^2);
 elseif strcmp(task ,'rem')
+    if isempty(D{demClusterBaseInd})
+        val = 0;
+        return;
+    end
+        
     lenFFT = length(clusterVars{demClusterBaseInd,1});
     lenInd = log2(lenFFT) - 5;
     fftUse = clusterVars{demClusterBaseInd,1} ./ demPt(dInd).pdf.fft(lenInd,1:lenFFT);
@@ -452,8 +490,10 @@ elseif strcmp(task ,'rem')
         - (demPt(dInd).yPos - rivPt.yPos)^2;
     
     lenPdf = (length(D{demClusterBaseInd}))*lenSinglePdf - (length(D{demClusterBaseInd})-1);
-    
+    try
     numZerosBegin = clusterVars{demClusterBaseInd,3}(1) - demPt(dInd).pdf.nzStartInd;
+    catch
+    end
     
     mean = clusterVars{demClusterBaseInd,3}(3) - demPt(dInd).pdf.mean;
     std = sqrt(clusterVars{demClusterBaseInd,3}(4)^2 - demPt(dInd).pdf.std^2);
@@ -518,6 +558,8 @@ if strcmp(task, 'add')
             clusterVars{baseInd,2} = clusterVars{baseInd,2} + (demPt(clusterInd(i)).xPos - rivPt.xPos)^2 ...
             + (demPt(clusterInd(i)).yPos - rivPt.yPos)^2;
         end
+%         clusterVars{baseInd,2} = clusterVars{baseInd,2} + (demPt(dInd).xPos - rivPt.xPos)^2 ...
+%             + (demPt(dInd).yPos - rivPt.yPos)^2;
     end
 elseif strcmp(task, 'rem')
     
@@ -776,15 +818,16 @@ end
 % grid;
 
 
-function processRiverPt()
+function processRiverPt(month)
 
 
 global rivPt;
 global delXInPdf;
+folderStr = sprintf('/Data/sitePowerPdf%s/', month);
 % dataFile = {'latLon_Minnesota.mat', 'latLon_Iowa.mat', 'latLon_Illinois.mat', 'latLon_Missouri.mat', 'latLon_Wisconsin.mat'};
 % dataFile = {'latLon_Minnesota.mat'};
 % colorVec = {'b', 'r', ', 'm', 'c', 'k'};
-fileName = dir([pwd '/Data/sitePowerPdf']);
+fileName = dir([pwd folderStr]);
 
 % legendStr = cell(1,length(dataFile));
 X = zeros(length(fileName), 1);
@@ -796,7 +839,7 @@ for fileInd = 1:length(fileName)
     if length(fileName(fileInd).name) < 5, continue;end
     if ~strcmp(fileName(fileInd).name(end-2:end), 'mat'), continue;end
     
-    matObj = matfile([pwd '/Data/sitePowerPdf/', fileName(fileInd).name]);
+    matObj = matfile([pwd folderStr fileName(fileInd).name]);
 %     pdfVal = matObj.f;
 %     flowVal = matobj.xi;
     latVal = matObj.latVal;
@@ -863,13 +906,14 @@ end
 % assignin('base', 'meanVec', meanVec);
 
 
-function processDemandPt()
+function processDemandPt(month)
 
 
 global demPt;
 global delXInPdf;
 
-matObj = matfile([pwd '/Data/demand/demandProfile.mat']);
+fStr = sprintf('/Data/demand/demandProfile%s.mat', month);
+matObj = matfile([pwd fStr]);
 demPtTemp = matObj.demPt;
 
 x = 0:delXInPdf:3;
@@ -888,12 +932,18 @@ for i = 1:length(demPtTemp.x)
     demPt(i).pdf.mean = mean;
     demPt(i).pdf.std = sqrt(var);
     fftUse = zeros(6,2048);
-    fftUse(1,1:64) = fft(demPt(i).pdf.y,64);
-    fftUse(2,1:128) = fft(demPt(i).pdf.y,128);
-    fftUse(3,1:256) = fft(demPt(i).pdf.y,256);
-    fftUse(4,1:512) = fft(demPt(i).pdf.y,512);
-    fftUse(5,1:1024) = fft(demPt(i).pdf.y,1024);
-    fftUse(6,1:2048) = fft(demPt(i).pdf.y,2048);
+%     fftUse(1,1:64) = fft(demPt(i).pdf.y,64);
+%     fftUse(2,1:128) = fft(demPt(i).pdf.y,128);
+%     fftUse(3,1:256) = fft(demPt(i).pdf.y,256);
+%     fftUse(4,1:512) = fft(demPt(i).pdf.y,512);
+%     fftUse(5,1:1024) = fft(demPt(i).pdf.y,1024);
+%     fftUse(6,1:2048) = fft(demPt(i).pdf.y,2048);
+    fftUse(1,1:64) = fft(yUse,64);
+    fftUse(2,1:128) = fft(yUse,128);
+    fftUse(3,1:256) = fft(yUse,256);
+    fftUse(4,1:512) = fft(yUse,512);
+    fftUse(5,1:1024) = fft(yUse,1024);
+    fftUse(6,1:2048) = fft(yUse,2048);
     demPt(i).pdf.fft = fftUse;
 end
 
