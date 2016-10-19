@@ -50,8 +50,8 @@ switch arg
         % currentDataNewTest.mat is with fft values
 
 %         matObj = matfile('currentDataNew1.mat');
-%         matObj = matfile('currentDataMar.mat');
-        matObj = matfile('currentDataJun.mat');
+        matObj = matfile('currentDataMar.mat');
+%         matObj = matfile('currentDataJun.mat');
 %         fStr = sprintf('currentData%sWithFFT1.mat', mon{dStart(1)});
 %         matObj = matfile(fStr);
         rivPt = matObj.rivPt;
@@ -67,11 +67,11 @@ switch arg
 
         rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
 
-%         demPt = demPt(1:2:end);
+        demPt = demPt(1:2:end);
         progress();
         partitionSpaceForRor(demPt, rivPt, mon{dStart(1)});
         
-            
+        
 end
 % plotRiverCoord();
 
@@ -107,21 +107,14 @@ fid = fopen('runLog_full.txt', 'w');
 
 for dInd = 1:numDemPt
 %     first allocation
-%     if dInd == 107
-%         disp('gg');
-%     end
+
     distOfOccupied = zeros(rorAllocated,1);
     demPtAssociationFlag = 0;
     clusterTotDemPdfTemp = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {});
 %     clusterTotDemPdfTemp = struct('x', {}, 'y', {}, 'nzStartInd', {}, 'nzEndInd', {}, 'mean', {}, 'std', {}, 'fft', {});
     for occRorInd = 1:rorAllocated
-%         demClusterInd = [];
-%         for dInClusterInd = 1:length(D{occRorInd})
-%             demClusterInd = [demClusterInd, D{occRorInd}(dInClusterInd)];
-%         end
-%         demClusterInd = [demClusterInd,dInd];
+
         demClusterInd = [D{occRorInd},dInd];
-%         if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
         if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorInd)))
             [distOfOccupied(occRorInd),clusterTotDemPdfTemp(occRorInd)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
             demPtAssociationFlag = 1;
@@ -132,7 +125,6 @@ for dInd = 1:numDemPt
     distOfAvailable = zeros(numRiverPt - rorAllocated,1);
     for rorAvailInd = 1:length(rorAvailableSet)
         if checkValidAssociation(demMeanPlusStdVec(dInd), rivMeanPlusStdVec(rorAvailableSet(rorAvailInd)))
-%         if checkValidAssociation(dInd, rivPt(rorAvailableSet(rorAvailInd)))
             distOfAvailable(rorAvailInd) = getTotalDistance(demPt(dInd), rivPt(rorAvailableSet(rorAvailInd)), 'ind', []);
             demPtAssociationFlag = 1;
         else
@@ -193,9 +185,6 @@ for dInd = 1:numDemPt
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
                 if checkValidAssociation(demMeanPlusStdVec(D{rorInd}), rivMeanPlusStdVec(rorAvailableSet(rorAvailableInd)))
-%                 if checkValidAssociation(D{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
-%                     if length(clusterTotDemPdf(rorInd).nzStartInd) >1
-%                     end
                     [distRorAvailable(rorAvailableInd), ~] = getTotalDistance(demPt(D{rorInd}), rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdf(rorInd));
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
@@ -238,12 +227,11 @@ for dInd = 1:numDemPt
 %         This would require entire group to look for new ROR-site
         reshuffleFlag = 0;
         distClusterReshuffleCurrent = Inf;
-        clusterTotDemPdfTemp = clusterTotDemPdf;
-%         if dInd==76
-%         end
+        
         for rorInd = 1:rorAllocated
             DTemp = D;
             DTemp{rorInd} = [DTemp{rorInd}, dInd];
+            clusterTotDemPdfTemp = clusterTotDemPdf;
             
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
@@ -296,22 +284,16 @@ for dInd = 1:numDemPt
 
 %   inter-group shuffle
     for dInOccRorInd = 1:dInd
-%         try
+
         occRorInd = locateDemPtInRorCluster(dInOccRorInd, D);
-%         catch
-%         end
         
         DTempRef = D;
         distClusterRef = distCluster;
         clusterTotDemPdfRef = clusterTotDemPdf;
         DTempRef{occRorInd}(DTempRef{occRorInd} == dInOccRorInd) = [];
-%         demClusterInd = [];
-%         for i = 1:length(DTempRef{occRorInd})
-%             demClusterInd = [demClusterInd, DTempRef{occRorInd}(i)];
-%         end
+        
         demClusterInd = DTempRef{occRorInd};
         if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorInd)))
-%         if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorInd)))
             [distClusterRef(occRorInd), clusterTotDemPdfRef(occRorInd)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorInd)), 'ind', []);
         else
             disp('some error here');
@@ -323,15 +305,11 @@ for dInd = 1:numDemPt
             if (occRorIndNext == occRorInd), continue;end
             DTemp = DTempRef;
             DTemp{occRorIndNext} = [DTemp{occRorIndNext}, dInOccRorInd];
-%             demClusterInd = [];
-%             for i = 1:length(DTemp{occRorIndNext})
-%                 demClusterInd = [demClusterInd, DTemp{occRorIndNext}(i)];
-%             end
+
             demClusterInd = DTemp{occRorIndNext};
             distClusterTemp = distClusterRef;
             clusterTotDemPdfTemp = clusterTotDemPdfRef;
             if checkValidAssociation(demMeanPlusStdVec(demClusterInd), rivMeanPlusStdVec(rorOccupiedSet(occRorIndNext)))
-%             if checkValidAssociation(demClusterInd, rivPt(rorOccupiedSet(occRorIndNext)))
                 [distClusterTemp(occRorIndNext), clusterTotDemPdfTemp(occRorIndNext)] = getTotalDistance(demPt(demClusterInd), rivPt(rorOccupiedSet(occRorIndNext)), 'ind', []);
             else
                 distClusterTemp(occRorIndNext) = Inf;
@@ -643,22 +621,26 @@ end
 
 
 % function out = checkValidAssociation(demClusterInd, rivPt)
-function out = checkValidAssociation(dem, gen)
 
 % global demPt;
-out = 0;
+% out = 0;
 
 % sumMeanStd = 0;
 % for i = 1:length(demClusterInd)
 %     sumMeanStd = sumMeanStd + demPt(demClusterInd(i)).pdf.mean + demPt(demClusterInd(i)).pdf.std;
 % end
-if sum(dem) < gen
-    out = 1;
-end
 
 % if sumMeanStd < rivPt.pdf.mean + rivPt.pdf.std
 %     out = 1;
 % end
+function out = checkValidAssociation(dem, gen)
+
+
+if sum(dem) < gen
+    out = 1;
+else
+    out = 0;
+end
 
 
 function processRiverPt(month)
