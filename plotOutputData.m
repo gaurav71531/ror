@@ -18,8 +18,8 @@ rivPt = matObj.rivPt;
 if nargin < 2
     lambda = 0.01;
     numDemPt = 288*2;
-    monInd = 6;
-    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_%d_%sTemp.mat', lambda,numDemPt,mon{monInd});
+    monInd = 11;
+    inpFileStr = sprintf('output_lambda_%4.3f_numDemPt_%d_%s.mat', lambda,numDemPt,mon{monInd});
     matObj = matfile([pwd '/OutputData/' inpFileStr]);
     D = matObj.D;
     rorOccupiedSet = matObj.rorOccupiedSet;

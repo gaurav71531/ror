@@ -1,16 +1,16 @@
 function processRiverData(varargin)
 
 % % % declare
-global rivPt;
-global demPt;
+% global rivPt;
+% global demPt;
 global delXInPdf;
 global epsilon;
 global lambda;
 global flowPowerFactor;
 
 % % % initialize
-rivPt = [];
-demPt = [];
+% rivPt = [];
+% demPt = [];
 delXInPdf = 0.05;
 epsilon = 1e-9;
 if nargin > 0
@@ -25,8 +25,8 @@ flowPowerFactor = 0.8 * 8 * 9.8 * 0.3038^3 / 1000;
 
 % % % % Time period for river Data %%%%%%%%%%%
 mon = {'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'};
-dStart = [6,0,0];
-dEnd = [6,0,0];
+dStart = [11,0,0];
+dEnd = [11,0,0];
 % % % % % % % % % % % % % % % % % % % % % % % % % 
 % % % utility functions
 
@@ -50,10 +50,10 @@ switch arg
         % currentDataNewTest.mat is with fft values
 
 %         matObj = matfile('currentDataNew1.mat');
-        matObj = matfile('currentDataMar.mat');
+%         matObj = matfile('currentDataMar.mat');
 %         matObj = matfile('currentDataJun.mat');
-%         fStr = sprintf('currentData%sWithFFT1.mat', mon{dStart(1)});
-%         matObj = matfile(fStr);
+        fStr = sprintf('currentData%s.mat', mon{dStart(1)});
+        matObj = matfile(fStr);
         rivPt = matObj.rivPt;
         demPt = matObj.demPt;
         weakRivPtInd = matObj.weakRivPtInd;
@@ -67,7 +67,8 @@ switch arg
 
         rivPt([weakRivPtInd,weakRivPtIndNE]) = [];
 
-        demPt = demPt(1:2:end);
+%         demPt = demPt(1:2:end);
+        fprintf('Simulation started for t=%s with %d demand points\n', mon{dStart(1)}, length(demPt));
         progress();
         partitionSpaceForRor(demPt, rivPt, mon{dStart(1)});
         
@@ -232,12 +233,12 @@ for dInd = 1:numDemPt
             DTemp = D;
             DTemp{rorInd} = [DTemp{rorInd}, dInd];
             clusterTotDemPdfTemp = clusterTotDemPdf;
+            clusterTotDemPdfInp = convolve(clusterTotDemPdfTemp(rorInd), demPt(dInd).pdf);
             
             distRorAvailable = zeros(numRiverPt - rorAllocated, 1);
             for rorAvailableInd = 1:length(rorAvailableSet)
                 if checkValidAssociation(demMeanPlusStdVec(DTemp{rorInd}), rivMeanPlusStdVec(rorAvailableSet(rorAvailableInd)))
-%                 if checkValidAssociation(DTemp{rorInd}, rivPt(rorAvailableSet(rorAvailableInd)))
-                    [distRorAvailable(rorAvailableInd), clusterTotDemPdfTemp(rorInd)] = getTotalDistance(demPt(DTemp{rorInd}), rivPt(rorAvailableSet(rorAvailableInd)), 'ind', clusterTotDemPdf(rorInd));
+                    [distRorAvailable(rorAvailableInd), clusterTotDemPdfTemp(rorInd)] = getTotalDistance(demPt(DTemp{rorInd}), rivPt(rorAvailableSet(rorAvailableInd)), 'pdf', clusterTotDemPdfInp);
                 else
                     distRorAvailable(rorAvailableInd) = Inf;
                 end     
@@ -276,7 +277,6 @@ for dInd = 1:numDemPt
             fprintf('New demPt-%d cannot be associated anywhere and anyhow by the program, will termonate\n', dInd);
         end        
     end
-    
     
 %     coordinate descent (reshuffling)
 
@@ -383,7 +383,7 @@ assignin('base', 'distCluster', distCluster);
 assignin('base', 'rivPt', rivPt);
 assignin('base', 'demPt', demPt);
 assignin('base', 'lambda', lambda);
-fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%sTemp.mat', lambda, length(demPt), mon);
+fName = sprintf('/OutputData/output_lambda_%4.3f_numDemPt_%d_%s.mat', lambda, length(demPt), mon);
 save([pwd fName], 'D', 'distCluster', 'rorOccupiedSet', 'rivPt', 'demPt', 'lambda');
 % plotOutputData(D, rorOccupiedSet, demPt, lambda);
 
@@ -568,44 +568,19 @@ function out = convolve(fcn1, fcn2)
 
 global delXInPdf;
 % needs struct with x, y and non-zero interval [nzStartInd, nzEndInd]
-% out = struct('x', 0, 'y', 0, 'nzStartInd', 0, 'nzEndInd', 0, 'mean', 0, 'std', 0);
 out.x = 0;
 % out.y = 0;
-% x1 and x2 must have same starting point and same step-size
-% if (fcn1.x(1) ~= fcn2.x(1)), 
-%     fprintf('error in input x-axis format\n');
-%     return;
-% end
-% l1 = length(fcn1.y);
-% l2 = length(fcn2.y);
-% yOld = conv(fcn1.y, fcn2.y) * delX;
-
-% out.x = [0:delX:delX*((l1+l2-1)-1)] + fcn1.x(1);
-
-% y = conv(fcn1.y(fcn1.nzStartInd:fcn1.nzEndInd), fcn2.y(fcn2.nzStartInd:fcn2.nzEndInd));
 numZerosBegin = fcn1.nzStartInd + fcn2.nzStartInd - 2;
-% numZerosEnd = l1 - fcn1.nzEndInd + l2 - fcn2.nzEndInd; 
-% out.y = [zeros(1,numZerosBegin), y, zeros(1, numZerosEnd)] * delX; % zero padding on beginning and end
-
-% [sTemp, eTemp] = getNZInterval(y);
-% out.nzStartInd = numZerosBegin + sTemp;
-% out.nzEndInd = numZerosBegin + eTemp;
 y = conv(fcn1.y, fcn2.y);
 % y = y * delXInPdf;
 y = y * 0.05;
 [s, e] = getNZInterval(y);
 out.nzStartInd = numZerosBegin + s; 
-% length(out.nzStartInd)
-% if length(out.nzStartInd) > 1
-% end
 out.y = y(s:e);
 out.nzEndInd = out.nzStartInd + length(out.y) - 1;
 out.mean = fcn1.mean + fcn2.mean;
 out.std = sqrt(fcn1.std^2 + fcn2.std^2);
 
-% if (length(out.y) ~= l1 + l2 -1), 
-%     error('error in conv length');
-% end
 
 function occRorInd = locateDemPtInRorCluster(dInd, D)
 
